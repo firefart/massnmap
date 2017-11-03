@@ -1,0 +1,6 @@
+zones.txt
+a_records.txt
+output.txt
+results/*.xml
+*.conf
+*.cfg

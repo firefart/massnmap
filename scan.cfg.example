@@ -1,0 +1,16 @@
+{
+  "root_zone":"local",
+  "blacklisted_zones":[
+    "sub1.local",
+    "sub2.local"
+  ],
+  "blacklisted_ips":[
+    "10.0.0.1",
+    "10.0.0.2"
+  ],
+  "blacklisted_ports":[
+    "1011",
+    "1012"
+  ],
+  "dns_server":"localhost"
+}
