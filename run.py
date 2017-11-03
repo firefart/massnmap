@@ -7,7 +7,6 @@ from multiprocessing import cpu_count, Pool, current_process
 import logging
 import re
 import subprocess
-import shutil
 import tempfile
 from collections import namedtuple
 import sys
@@ -50,7 +49,6 @@ def calculate_timedelta(time1):
     return now - time1
 
 def execute_process(c, shell=False):
-    size = shutil.get_terminal_size()
     logger.debug("Executing {}".format(c))
     # Needed when shell = False
     if (shell == False and type(c) is str):
