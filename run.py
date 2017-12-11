@@ -247,7 +247,7 @@ def main(config_file):
 
     # 6
     ports = parse_massscan_output(massscan_output)
-    logger.info("Massscan finished in {} seconds".format(calculate_timedelta(start_time)))
+    logger.info("Massscan finished in {}".format(calculate_timedelta(start_time)))
 
     # 7
     start_time = datetime.now()
