@@ -13,6 +13,7 @@ import sys
 import ipaddress
 import json
 from pathlib import Path
+import os
 
 VERSION = "1.0"
 LOG_FORMAT = "%(asctime)-15s - %(levelname)-8s - %(processName)-11s - %(message)s"
@@ -205,6 +206,10 @@ def main(config_file):
     BLACKLIST_IP = config["blacklisted_ips"]
     BLACKLIST_PORTS = config["blacklisted_ports"]
     DNS_SERVER = config["dns_server"]
+
+    # create results directory
+    if not os.path.exists("results"):
+        os.makedirs("results")
 
     # 2
     zones = get_zones()
