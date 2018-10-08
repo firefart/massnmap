@@ -10,10 +10,10 @@ import subprocess
 import tempfile
 from collections import namedtuple
 import sys
-import ipaddress
 import json
 from pathlib import Path
 import os
+from ipaddress import ip_network, ip_address
 
 VERSION = "1.0"
 LOG_FORMAT = "%(asctime)-15s - %(levelname)-8s - %(processName)-11s - %(message)s"
@@ -109,7 +109,7 @@ def start_massscan(records, ports):
         config_file.write(config.encode("utf-8"))
         config_file.flush()
 
-        a = execute_process("masscan -c {}".format(config_file.name))
+        execute_process("masscan -c {}".format(config_file.name))
         output_file.flush()
         output_file.seek(0)
         output = output_file.read()
@@ -171,7 +171,7 @@ def start_nmaps(item):
                 "results/" + ip + ".xml",
                 DNS_SERVER,
                 ip)
-        a = execute_process(nmap_command)
+        execute_process(nmap_command)
         output_file.flush()
         output_file.seek(0)
         output = output_file.read()
@@ -200,11 +200,12 @@ def main(config_file):
             logger.error("Invalid config file: {}".format(e))
             return
 
-    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, DNS_SERVER
+    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, BLACKLIST_RANGES, DNS_SERVER
     ROOT_ZONE = config["root_zone"]
     BLACKLIST_ZONES = config["blacklisted_zones"]
     BLACKLIST_IP = config["blacklisted_ips"]
     BLACKLIST_PORTS = config["blacklisted_ports"]
+    BLACKLIST_RANGES = config["blacklisted_ranges"]
     DNS_SERVER = config["dns_server"]
 
     # create results directory
@@ -229,12 +230,18 @@ def main(config_file):
     a_records = list(set(a_records))
     # only use internal ips
     tmp = len(a_records)
-    a_records = [i for i in a_records if i != "" and ipaddress.ip_address(i).is_private]
+    a_records = [i for i in a_records if i != "" and ip_address(i).is_private]
     logger.info("Removed {} non private ips".format(tmp - len(a_records)))
     # remove blacklisted IPs
     tmp = len(a_records)
     a_records = [i for i in a_records if i not in BLACKLIST_IP]
     logger.info("Removed {} blacklisted ips".format(tmp - len(a_records)))
+    # remove blacklisted ranges
+    tmp = len(a_records)
+    for x in BLACKLIST_RANGES:
+        net = ip_network(x)
+        a_records = [i for i in a_records if ip_address(i) not in net]
+    logger.info("Removed {} blacklisted ips from ranges".format(tmp - len(a_records)))
     wf("a_records.txt", "\n".join(a_records))
     logger.info("Got {} A records".format(len(a_records)))
 
