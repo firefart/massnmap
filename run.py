@@ -50,25 +50,25 @@ def calculate_timedelta(time1):
     return now - time1
 
 def execute_process(c, shell=False):
-    logger.debug("Executing {}".format(c))
+    logger.debug(f"Executing {c}")
     # Needed when shell = False
     if (shell == False and type(c) is str):
         c = c.split()
     try:
         output = subprocess.check_output(c, stderr=subprocess.STDOUT, shell=shell)
     except subprocess.CalledProcessError as e:
-        logger.error("Error when running {}: {}".format(c, e.output))
+        logger.error(f"Error when running {c}: {e.output}")
         output = e.output
     return output
 
 def get_zones():
-    a = execute_process("dig -t axfr {} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"".format(ROOT_ZONE), True)
+    a = execute_process(f"dig -t axfr {ROOT_ZONE} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
 def get_a_records(zone):
     zone = zone if isinstance(zone, str) else zone.decode('utf-8')
-    a = execute_process("dig -t axfr {} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V".format(zone), True)
+    a = execute_process(f"dig -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
@@ -86,22 +86,21 @@ def parse_nmap_services(filename):
     return ports
 
 def generate_massscan_config(ports_to_scan, file_in, file_out):
-    return ("rate = 100000.00\n"
-            "randomize-hosts = true\n"
-            "show = open\n"
-            "ports = {ports}\n"
-            "includefile = {infile}\n"
-            "output-format = list\n"
-            "output-filename = {outfile}\n").format(
-                ports=",".join(ports_to_scan),
-                infile=file_in,
-                outfile=file_out
-            )
+    ports = ",".join(ports_to_scan)
+    return (
+        "rate = 100000.00\n"
+        "randomize-hosts = true\n"
+        "show = open\n"
+        f"ports = {ports}\n"
+        f"includefile = {file_in}\n"
+        "output-format = list\n"
+        f"output-filename = {file_out}\n"
+    )
 
 def start_massscan(records, ports):
     with tempfile.NamedTemporaryFile() as input_file, tempfile.NamedTemporaryFile() as output_file, tempfile.NamedTemporaryFile() as config_file:
         for r in records:
-            line = "{0}\n".format(r.strip()).encode("utf-8")
+            line = f"{r.strip()}\n".encode("utf-8")
             input_file.write(line)
         input_file.flush()
 
@@ -109,7 +108,7 @@ def start_massscan(records, ports):
         config_file.write(config.encode("utf-8"))
         config_file.flush()
 
-        execute_process("masscan -c {}".format(config_file.name))
+        execute_process(["masscan", "-c", config_file.name])
         output_file.flush()
         output_file.seek(0)
         output = output_file.read()
@@ -140,7 +139,7 @@ def start_nmaps(item):
     ip = item[0]
     ports = item[1]
     if len(ports) == 0:
-        logger.debug("No open ports for {}".format(ip))
+        logger.debug(f"No open ports for {ip}")
         return
     ports = sorted(ports, key=lambda x: x.port)
     portmapping = ""
@@ -154,7 +153,7 @@ def start_nmaps(item):
             portmapping += "U:"
             uses_udp = True
         else:
-            logger.error("Unknown protocol {}".format(p.protocol))
+            logger.error(f"Unknown protocol {p.protocol}")
         portmapping += str(p.port)
         portmapping += ","
     portmapping = portmapping.rstrip(",")
@@ -164,18 +163,28 @@ def start_nmaps(item):
     scan_type += ("U" if uses_udp else "")
     scan_type += "V" # version detection
     with tempfile.NamedTemporaryFile() as output_file:
-        nmap_command = "nmap -p {0} {1} -Pn -T5 -O -A --osscan-guess --host-timeout=10m -oN {2} -oX {3} --dns-servers {4} {5}".format(
-                portmapping,
-                scan_type,
-                output_file.name,
-                "results/" + ip + ".xml",
-                DNS_SERVER,
-                ip)
+        nmap_command = [
+            "nmap", "-p" , portmapping,
+            scan_type,
+            "-Pn",
+            "-T5",
+            "-O",
+            "-A",
+            "--osscan-guess",
+            "--host-timeout", "10m",
+            "-oN", output_file.name,
+            "-oX", f"results/{ip}.xml",
+            "--dns-servers", DNS_SERVER,
+            "--script-args", f"http.useragent=\"{USER_AGENT}\"",
+            ip
+        ]
         execute_process(nmap_command)
         output_file.flush()
         output_file.seek(0)
         output = output_file.read()
-    logger.debug("{} finished ({})".format(current_process().name, calculate_timedelta(start_time)))
+    process_name = current_process().name
+    delta = calculate_timedelta(start_time)
+    logger.debug(f"{process_name} finished ({delta})")
     return output
 
 
@@ -191,22 +200,23 @@ def main(config_file):
     # 1
     p = Path(config_file)
     if not p.is_file():
-        logger.error("{} is no valid file".format(config_file))
+        logger.error(f"{config_file} is no valid file")
         return
     with p.open() as f:
         try:
             config = json.load(f)
         except json.decoder.JSONDecodeError as e:
-            logger.error("Invalid config file: {}".format(e))
+            logger.error(f"Invalid config file: {e}")
             return
 
-    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, BLACKLIST_RANGES, DNS_SERVER
+    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, BLACKLIST_RANGES, DNS_SERVER, USER_AGENT
     ROOT_ZONE = config["root_zone"]
     BLACKLIST_ZONES = config["blacklisted_zones"]
     BLACKLIST_IP = config["blacklisted_ips"]
     BLACKLIST_PORTS = config["blacklisted_ports"]
     BLACKLIST_RANGES = config["blacklisted_ranges"]
     DNS_SERVER = config["dns_server"]
+    USER_AGENT = config["user_agent"]
 
     # create results directory
     if not os.path.exists("results"):
@@ -218,9 +228,9 @@ def main(config_file):
     zones.append(ROOT_ZONE)
     tmp = len(zones)
     zones = [z for z in zones if z not in BLACKLIST_ZONES]
-    logger.info("Removed {} blacklisted zones".format(tmp - len(zones)))
+    logger.info(f"Removed {tmp - len(zones)} blacklisted zones")
     wf("zones.txt", "\n".join(zones))
-    logger.info("Got {} zones".format(len(zones)))
+    logger.info(f"Got {len(zones)} zones")
 
     # 3
     a_records = []
@@ -231,26 +241,26 @@ def main(config_file):
     # only use internal ips
     tmp = len(a_records)
     a_records = [i for i in a_records if i != "" and ip_address(i).is_private]
-    logger.info("Removed {} non private ips".format(tmp - len(a_records)))
+    logger.info(f"Removed {tmp - len(a_records)} non private ips")
     # remove blacklisted IPs
     tmp = len(a_records)
     a_records = [i for i in a_records if i not in BLACKLIST_IP]
-    logger.info("Removed {} blacklisted ips".format(tmp - len(a_records)))
+    logger.info(f"Removed {tmp - len(a_records)} blacklisted ips")
     # remove blacklisted ranges
     tmp = len(a_records)
     for x in BLACKLIST_RANGES:
         net = ip_network(x)
         a_records = [i for i in a_records if ip_address(i) not in net]
-    logger.info("Removed {} blacklisted ips from ranges".format(tmp - len(a_records)))
+    logger.info(f"Removed {tmp - len(a_records)} blacklisted ips from ranges")
     wf("a_records.txt", "\n".join(a_records))
-    logger.info("Got {} A records".format(len(a_records)))
+    logger.info(f"Got {len(a_records)} A records")
 
     # 4
     # https://github.com/nmap/nmap/blob/master/nmap-services
     ports = parse_nmap_services("nmap_services")
     # Blacklisted Ports
     ports = [x for x in ports if x not in BLACKLIST_PORTS]
-    logger.info("Removed {} blacklisted ports".format(len(BLACKLIST_PORTS)))
+    logger.info(f"Removed {len(BLACKLIST_PORTS)} blacklisted ports")
 
     # 5
     start_time = datetime.now()
@@ -259,7 +269,7 @@ def main(config_file):
 
     # 6
     ports = parse_massscan_output(massscan_output)
-    logger.info("Massscan finished in {}".format(calculate_timedelta(start_time)))
+    logger.info(f"Massscan finished in {calculate_timedelta(start_time)}")
 
     # 7
     start_time = datetime.now()
@@ -271,7 +281,7 @@ def main(config_file):
             nmap_outputs.append(output)
             sys.stderr.write("\rNmap progress: {0:.2%} ({1}/{2})".format(counter/ips_to_scan, counter, ips_to_scan))
         sys.stderr.write("\n")
-    logger.info("NMAP scan finished in {}".format(calculate_timedelta(start_time)))
+    logger.info(f"NMAP scan finished in {calculate_timedelta(start_time)}")
 
     with open("output.txt", "wb") as f:
         for x in nmap_outputs:
@@ -290,5 +300,5 @@ if __name__ == "__main__":
     try:
         main(args.config)
     finally:
-        logger.info("script finished in {}".format(calculate_timedelta(overall_start_time)))
+        logger.info(f"script finished in {calculate_timedelta(overall_start_time)}")
 
