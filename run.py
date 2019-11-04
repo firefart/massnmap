@@ -196,6 +196,7 @@ def main(config_file):
     # 5) massscan of a records
     # 6) parse massscan output
     # 7) run single nmap scans with discovered ports
+    # 8) run post scan scripts
 
     # 1
     p = Path(config_file)
@@ -217,6 +218,7 @@ def main(config_file):
     BLACKLIST_RANGES = config["blacklisted_ranges"]
     DNS_SERVER = config["dns_server"]
     USER_AGENT = config["user_agent"]
+    POST_SCAN_SCRIPTS = config["post_scan_scripts"]
 
     # create results directory
     if not os.path.exists("results"):
@@ -286,6 +288,11 @@ def main(config_file):
     with open("output.txt", "wb") as f:
         for x in nmap_outputs:
             f.write(x)
+    
+    # 8
+    # order should be preserved on parsing according to JSON docs
+    for x in POST_SCAN_SCRIPTS:
+        logger.info(execute_process(x).decode('utf-8'))
 
 
 if __name__ == "__main__":
