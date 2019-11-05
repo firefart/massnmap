@@ -2,7 +2,7 @@
 Description=RSS Fetcher Timer
 
 [Timer]
-OnCalendar=3w 
+OnCalendar=monthly
 Persistent=true
 
 [Install]
