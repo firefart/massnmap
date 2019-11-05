@@ -7,7 +7,7 @@ After=network.target network-online.target
 User=massnmap
 Group=nogroup
 SyslogIdentifier=massnmap
-ExecStart=/home/massnmap/massnmap/run.py --config /home/massnmap/massnmap/scan.cfg
+ExecStart=/home/massnmap/massnmap/run.py --config /home/massnmap/scan.cfg
 Restart=no
 
 [Install]
