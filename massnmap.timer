@@ -1,0 +1,9 @@
+[Unit]
+Description=RSS Fetcher Timer
+
+[Timer]
+OnCalendar=3w 
+Persistent=true
+
+[Install]
+WantedBy=timers.target

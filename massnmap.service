@@ -1,0 +1,14 @@
+[Unit]
+Description=Massnmap
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+User=massnmap
+Group=nogroup
+SyslogIdentifier=massnmap
+ExecStart=/home/massnmap/massnmap/run.py --config /home/massnmap/massnmap/scan.cfg
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
