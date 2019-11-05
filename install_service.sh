@@ -1,8 +1,8 @@
 #!/bin/sh
 
 echo "Copying unit file"
-cp /home/massnmap/massnmap.service /etc/systemd/system/massnmap.service
-cp /home/massnmap/massnmap.timer /etc/systemd/system/massnmap.timer
+cp /home/massnmap/massnmap/massnmap.service /etc/systemd/system/massnmap.service
+cp /home/massnmap/massnmap/massnmap.timer /etc/systemd/system/massnmap.timer
 echo "reloading systemctl"
 systemctl daemon-reload
 echo "enabling service"
