@@ -173,7 +173,7 @@ def start_nmaps(item):
             "--osscan-guess",
             "--host-timeout", "10m",
             "-oN", output_file.name,
-            "-oX", f"results/{ip}.xml",
+            "-oX", f"{RESULT_DIR}/{ip}.xml",
             "--dns-servers", DNS_SERVER,
             "--script-args", f"http.useragent=\"{USER_AGENT}\"",
             ip
@@ -210,7 +210,7 @@ def main(config_file):
             logger.error(f"Invalid config file: {e}")
             return
 
-    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, BLACKLIST_RANGES, DNS_SERVER, USER_AGENT
+    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, BLACKLIST_RANGES, DNS_SERVER, USER_AGENT, RESULT_DIR
     ROOT_ZONE = config["root_zone"]
     BLACKLIST_ZONES = config["blacklisted_zones"]
     BLACKLIST_IP = config["blacklisted_ips"]
@@ -219,10 +219,11 @@ def main(config_file):
     DNS_SERVER = config["dns_server"]
     USER_AGENT = config["user_agent"]
     POST_SCAN_SCRIPTS = config["post_scan_scripts"]
+    RESULT_DIR = config["result_dir"]
 
     # create results directory
-    if not os.path.exists("results"):
-        os.makedirs("results")
+    if not os.path.exists(RESULT_DIR):
+        os.makedirs(RESULT_DIR)
 
     # 2
     zones = get_zones()
