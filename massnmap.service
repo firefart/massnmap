@@ -5,7 +5,7 @@ After=network.target network-online.target
 
 [Service]
 User=massnmap
-Group=nogroup
+Group=massnmap
 SyslogIdentifier=massnmap
 Environment=NMAP_PRIVILEGED=""
 ExecStart=/home/massnmap/massnmap/run.py --config /home/massnmap/scan.cfg
