@@ -8,6 +8,7 @@ User=massnmap
 Group=massnmap
 SyslogIdentifier=massnmap
 Environment=NMAP_PRIVILEGED=""
+WorkingDirectory=/home/massnmap/massnmap
 ExecStart=/home/massnmap/massnmap/run.py --config /home/massnmap/scan.cfg
 Restart=no
 
