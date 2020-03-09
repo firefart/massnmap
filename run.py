@@ -30,13 +30,18 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
+ROOT_ZONE, DNS_SERVER, USER_AGENT, RESULT_DIR = ''
+
+
 def wf(fname, content):
     with open(fname, "wt") as f:
         f.write(content)
 
+
 def rf(fname):
     with open(fname, "rt") as f:
         return f.read()
+
 
 def extract_string(r, string):
     m = re.search(r, string)
@@ -45,9 +50,11 @@ def extract_string(r, string):
     else:
         return ""
 
+
 def calculate_timedelta(time1):
     now = datetime.now()
     return now - time1
+
 
 def execute_process(c, shell=False):
     logger.debug(f"Executing {c}")
@@ -55,22 +62,29 @@ def execute_process(c, shell=False):
     if (shell == False and type(c) is str):
         c = c.split()
     try:
-        output = subprocess.check_output(c, stderr=subprocess.STDOUT, shell=shell)
+        output = subprocess.check_output(
+            c, stderr=subprocess.STDOUT, shell=shell)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error when running {c}: {e.output}")
         output = e.output
     return output
 
+
 def get_zones():
-    a = execute_process(f"dig -t axfr {ROOT_ZONE} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
+    global ROOT_ZONE
+    a = execute_process(
+        f"dig -t axfr {ROOT_ZONE} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
+
 def get_a_records(zone):
     zone = zone if isinstance(zone, str) else zone.decode('utf-8')
-    a = execute_process(f"dig -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
+    a = execute_process(
+        f"dig -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
+
 
 def parse_nmap_services(filename):
     ports = []
@@ -85,6 +99,7 @@ def parse_nmap_services(filename):
         ports.append(port)
     return ports
 
+
 def generate_massscan_config(ports_to_scan, file_in, file_out):
     ports = ",".join(ports_to_scan)
     return (
@@ -97,6 +112,7 @@ def generate_massscan_config(ports_to_scan, file_in, file_out):
         f"output-filename = {file_out}\n"
     )
 
+
 def start_massscan(records, ports):
     with tempfile.NamedTemporaryFile() as input_file, tempfile.NamedTemporaryFile() as output_file, tempfile.NamedTemporaryFile() as config_file:
         for r in records:
@@ -104,7 +120,8 @@ def start_massscan(records, ports):
             input_file.write(line)
         input_file.flush()
 
-        config = generate_massscan_config(ports, input_file.name, output_file.name)
+        config = generate_massscan_config(
+            ports, input_file.name, output_file.name)
         config_file.write(config.encode("utf-8"))
         config_file.flush()
 
@@ -113,6 +130,7 @@ def start_massscan(records, ports):
         output_file.seek(0)
         output = output_file.read()
     return output
+
 
 def parse_massscan_output(output):
     ret = {}
@@ -134,7 +152,9 @@ def parse_massscan_output(output):
             print("No Regex Match at line " + line)
     return ret
 
+
 def start_nmaps(item):
+    global RESULT_DIR, DNS_SERVER, USER_AGENT
     start_time = datetime.now()
     ip = item[0]
     ports = item[1]
@@ -161,10 +181,10 @@ def start_nmaps(item):
     scan_type = "-s"
     scan_type += ("S" if uses_tcp else "")
     scan_type += ("U" if uses_udp else "")
-    scan_type += "V" # version detection
+    scan_type += "V"  # version detection
     with tempfile.NamedTemporaryFile() as output_file:
         nmap_command = [
-            "nmap", "-p" , portmapping,
+            "nmap", "-p", portmapping,
             scan_type,
             "-Pn",
             "-T5",
@@ -210,7 +230,7 @@ def main(config_file):
             logger.error(f"Invalid config file: {e}")
             return
 
-    global ROOT_ZONE, BLACKLIST_PORTS, BLACKLIST_IP, BLACKLIST_PORTS, BLACKLIST_RANGES, DNS_SERVER, USER_AGENT, RESULT_DIR
+    global ROOT_ZONE, DNS_SERVER, USER_AGENT, RESULT_DIR
     ROOT_ZONE = config["root_zone"]
     BLACKLIST_ZONES = config["blacklisted_zones"]
     BLACKLIST_IP = config["blacklisted_ips"]
@@ -282,14 +302,15 @@ def main(config_file):
         ips_to_scan = len(ports)
         for counter, output in enumerate(pool.imap_unordered(start_nmaps, ports.items()), 1):
             nmap_outputs.append(output)
-            sys.stderr.write("\rNmap progress: {0:.2%} ({1}/{2})".format(counter/ips_to_scan, counter, ips_to_scan))
+            sys.stderr.write(
+                "\rNmap progress: {0:.2%} ({1}/{2})".format(counter/ips_to_scan, counter, ips_to_scan))
         sys.stderr.write("\n")
     logger.info(f"NMAP scan finished in {calculate_timedelta(start_time)}")
 
     with open("output.txt", "wb") as f:
         for x in nmap_outputs:
             f.write(x)
-    
+
     # 8
     # order should be preserved on parsing according to JSON docs
     for x in POST_SCAN_SCRIPTS:
@@ -298,9 +319,12 @@ def main(config_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="scan")
-    parser.add_argument("-c", "--config", required=True, help="config file to use")
-    parser.add_argument("-d", "--debug", action="store_true", help="set loglevel to DEBUG")
-    parser.add_argument("--version", action="version", version="%(prog)s {}".format(VERSION))
+    parser.add_argument("-c", "--config", required=True,
+                        help="config file to use")
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="set loglevel to DEBUG")
+    parser.add_argument("--version", action="version",
+                        version="%(prog)s {}".format(VERSION))
     args = parser.parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -308,5 +332,5 @@ if __name__ == "__main__":
     try:
         main(args.config)
     finally:
-        logger.info(f"script finished in {calculate_timedelta(overall_start_time)}")
-
+        logger.info(
+            f"script finished in {calculate_timedelta(overall_start_time)}")
