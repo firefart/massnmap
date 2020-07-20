@@ -8,11 +8,13 @@ The output is saved in various files and all NMAP xml outputs are stored in the 
 To configure the scan modify the provided `scan.cfg.example` and pass it via the `-c parameter`
 
 ## Requirements
+
 - Python3
 - massscan
 - nmap
 
 ## Sample
+
 ```
 ./run.py -c scan.cfg
 ```
@@ -20,6 +22,6 @@ To configure the scan modify the provided `scan.cfg.example` and pass it via the
 ## Running as a service
 
 ```
-sudo setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip /usr/bin/nmap
-sudo setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip /bin/masscan
+sudo setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip $(which nmap)
+sudo setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip $(which masscan)
 ```
