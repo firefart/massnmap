@@ -30,7 +30,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-ROOT_ZONE, DNS_SERVER, USER_AGENT, RESULT_DIR = ''
+ROOT_ZONE, DNS_SERVER, USER_AGENT, RESULT_DIR = '', '', '', ''
 
 
 def wf(fname, content):
