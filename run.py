@@ -71,17 +71,18 @@ def execute_process(c, shell=False):
 
 
 def get_zones():
-    global ROOT_ZONE
+    global ROOT_ZONE, DNS_SERVER
     a = execute_process(
-        f"dig -t axfr {ROOT_ZONE} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
+        f"dig @{DNS_SERVER} -t axfr {ROOT_ZONE} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
 
 def get_a_records(zone):
+    global DNS_SERVER
     zone = zone if isinstance(zone, str) else zone.decode('utf-8')
     a = execute_process(
-        f"dig -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
+        f"dig @{DNS_SERVER} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
