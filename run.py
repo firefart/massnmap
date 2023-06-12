@@ -30,7 +30,7 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-ROOT_ZONE, DNS_SERVER, USER_AGENT, RESULT_DIR = '', '', '', ''
+ROOT_ZONES, DNS_SERVER, USER_AGENT, RESULT_DIR = '', '', '', ''
 
 
 def wf(fname, content):
@@ -71,11 +71,14 @@ def execute_process(c, shell=False):
 
 
 def get_zones():
-    global ROOT_ZONE, DNS_SERVER
-    a = execute_process(
-        f"dig @{DNS_SERVER} -t axfr {ROOT_ZONE} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
-    x = a.strip().split(b"\n")
-    return [y.decode("utf-8") for y in x]
+    global ROOT_ZONES, DNS_SERVER
+    zones = []
+    for root_zone in ROOT_ZONES:
+        a = execute_process(
+            f"dig @{DNS_SERVER} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
+        x = a.strip().split(b"\n")
+        zones.extend([y.decode("utf-8") for y in x])
+    return zones
 
 
 def get_a_records(zone):
@@ -231,8 +234,8 @@ def main(config_file):
             logger.error(f"Invalid config file: {e}")
             return
 
-    global ROOT_ZONE, DNS_SERVER, USER_AGENT, RESULT_DIR
-    ROOT_ZONE = config["root_zone"]
+    global ROOT_ZONES, DNS_SERVER, USER_AGENT, RESULT_DIR
+    ROOT_ZONES = config["root_zones"]
     BLACKLIST_ZONES = config["blacklisted_zones"]
     BLACKLIST_IP = config["blacklisted_ips"]
     BLACKLIST_PORTS = config["blacklisted_ports"]
@@ -249,7 +252,7 @@ def main(config_file):
     # 2
     zones = get_zones()
     # also append root zone (also contains A records)
-    zones.append(ROOT_ZONE)
+    zones.extend(ROOT_ZONES)
     tmp = len(zones)
     zones = [z for z in zones if z not in BLACKLIST_ZONES]
     logger.info(f"Removed {tmp - len(zones)} blacklisted zones")

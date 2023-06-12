@@ -1,5 +1,8 @@
 {
-  "root_zone":"local",
+  "root_zones": [
+    "local",
+    "local2"
+  ],
   "result_dir":"/home/massnmap/massnmap/results",
   "blacklisted_zones":[
     "sub1.local",
