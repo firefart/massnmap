@@ -104,10 +104,10 @@ def parse_nmap_services(filename):
     return ports
 
 
-def generate_massscan_config(ports_to_scan, file_in, file_out):
+def generate_massscan_config(ports_to_scan, massscan_rate, file_in, file_out):
     ports = ",".join(ports_to_scan)
     return (
-        "rate = 100000.00\n"
+        f"rate = {massscan_rate}.00\n"
         "randomize-hosts = true\n"
         "show = open\n"
         f"ports = {ports}\n"
@@ -117,7 +117,7 @@ def generate_massscan_config(ports_to_scan, file_in, file_out):
     )
 
 
-def start_massscan(records, ports):
+def start_massscan(records, ports, massscan_rate):
     with tempfile.NamedTemporaryFile() as input_file, tempfile.NamedTemporaryFile() as output_file, tempfile.NamedTemporaryFile() as config_file:
         for r in records:
             line = f"{r.strip()}\n".encode("utf-8")
@@ -125,7 +125,7 @@ def start_massscan(records, ports):
         input_file.flush()
 
         config = generate_massscan_config(
-            ports, input_file.name, output_file.name)
+            ports, massscan_rate, input_file.name, output_file.name)
         config_file.write(config.encode("utf-8"))
         config_file.flush()
 
@@ -244,6 +244,7 @@ def main(config_file):
     USER_AGENT = config["user_agent"]
     POST_SCAN_SCRIPTS = config["post_scan_scripts"]
     RESULT_DIR = config["result_dir"]
+    massscan_rate = config["massscan_rate"]
 
     # create results directory
     if not os.path.exists(RESULT_DIR):
@@ -291,8 +292,8 @@ def main(config_file):
 
     # 5
     start_time = datetime.now()
-    logger.info("Starting masscan")
-    massscan_output = start_massscan(a_records, ports)
+    logger.info(f"Starting masscan with rate {massscan_rate}")
+    massscan_output = start_massscan(a_records, ports, massscan_rate)
 
     # 6
     ports = parse_massscan_output(massscan_output)
