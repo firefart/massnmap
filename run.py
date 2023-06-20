@@ -62,8 +62,7 @@ def execute_process(c, shell=False):
     if (shell == False and type(c) is str):
         c = c.split()
     try:
-        output = subprocess.check_output(
-            c, stderr=subprocess.STDOUT, shell=shell)
+        output = subprocess.check_output(c, stderr=subprocess.STDOUT, shell=shell)
     except subprocess.CalledProcessError as e:
         logger.error(f"Error when running {c}: {e.output}")
         output = e.output
@@ -74,8 +73,7 @@ def get_zones():
     global ROOT_ZONES, DNS_SERVER
     zones = []
     for root_zone in ROOT_ZONES:
-        a = execute_process(
-            f"dig @{DNS_SERVER} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
+        a = execute_process(f"dig @{DNS_SERVER} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
         x = a.strip().split(b"\n")
         zones.extend([y.decode("utf-8") for y in x])
     return zones
@@ -84,8 +82,7 @@ def get_zones():
 def get_a_records(zone):
     global DNS_SERVER
     zone = zone if isinstance(zone, str) else zone.decode('utf-8')
-    a = execute_process(
-        f"dig @{DNS_SERVER} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
+    a = execute_process(f"dig @{DNS_SERVER} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
@@ -124,8 +121,7 @@ def start_massscan(records, ports, massscan_rate):
             input_file.write(line)
         input_file.flush()
 
-        config = generate_massscan_config(
-            ports, massscan_rate, input_file.name, output_file.name)
+        config = generate_massscan_config(ports, massscan_rate, input_file.name, output_file.name)
         config_file.write(config.encode("utf-8"))
         config_file.flush()
 
@@ -307,8 +303,11 @@ def main(config_file):
         ips_to_scan = len(ports)
         for counter, output in enumerate(pool.imap_unordered(start_nmaps, ports.items()), 1):
             nmap_outputs.append(output)
-            sys.stderr.write(
-                "\rNmap progress: {0:.2%} ({1}/{2})".format(counter/ips_to_scan, counter, ips_to_scan))
+            text = "Nmap progress: {0:.2%} ({1}/{2})".format(counter/ips_to_scan, counter, ips_to_scan)
+            if sys.stderr.isatty():
+                # progressbar style when there is a tty attached
+                text = f"\r{text}"
+            sys.stderr.write(text)
         sys.stderr.write("\n")
     logger.info(f"NMAP scan finished in {calculate_timedelta(start_time)}")
 
@@ -324,12 +323,9 @@ def main(config_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="scan")
-    parser.add_argument("-c", "--config", required=True,
-                        help="config file to use")
-    parser.add_argument("-d", "--debug", action="store_true",
-                        help="set loglevel to DEBUG")
-    parser.add_argument("--version", action="version",
-                        version="%(prog)s {}".format(VERSION))
+    parser.add_argument("-c", "--config", required=True, help="config file to use")
+    parser.add_argument("-d", "--debug", action="store_true", help="set loglevel to DEBUG")
+    parser.add_argument("--version", action="version", version="%(prog)s {}".format(VERSION))
     args = parser.parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -337,5 +333,4 @@ if __name__ == "__main__":
     try:
         main(args.config)
     finally:
-        logger.info(
-            f"script finished in {calculate_timedelta(overall_start_time)}")
+        logger.info(f"script finished in {calculate_timedelta(overall_start_time)}")
