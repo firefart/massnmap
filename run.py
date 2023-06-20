@@ -15,7 +15,7 @@ from pathlib import Path
 import os
 from ipaddress import ip_network, ip_address
 
-VERSION = "1.0"
+VERSION = "1.1"
 LOG_FORMAT = "%(asctime)-15s - %(levelname)-8s - %(processName)-11s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
