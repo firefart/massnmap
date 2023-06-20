@@ -307,6 +307,8 @@ def main(config_file):
             if sys.stderr.isatty():
                 # progressbar style when there is a tty attached
                 text = f"\r{text}"
+            else:
+                text = f"{text}\n"
             sys.stderr.write(text)
         sys.stderr.write("\n")
     logger.info(f"NMAP scan finished in {calculate_timedelta(start_time)}")
