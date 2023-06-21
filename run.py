@@ -30,16 +30,14 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-ROOT_ZONES, DNS_SERVER, USER_AGENT, RESULT_DIR = '', '', '', ''
-
 
 def wf(fname, content):
-    with open(fname, "wt") as f:
+    with open(fname, "wt", encoding="utf-8") as f:
         f.write(content)
 
 
 def rf(fname):
-    with open(fname, "rt") as f:
+    with open(fname, "rt", encoding="utf-8") as f:
         return f.read()
 
 
@@ -47,8 +45,7 @@ def extract_string(r, string):
     m = re.search(r, string)
     if m:
         return m.group(1)
-    else:
-        return ""
+    return ""
 
 
 def calculate_timedelta(time1):
@@ -57,32 +54,30 @@ def calculate_timedelta(time1):
 
 
 def execute_process(c, shell=False):
-    logger.debug(f"Executing {c}")
+    logger.debug("Executing %s", c)
     # Needed when shell = False
-    if (shell == False and type(c) is str):
+    if (not shell and isinstance(c, str)):
         c = c.split()
     try:
         output = subprocess.check_output(c, stderr=subprocess.STDOUT, shell=shell)
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error when running {c}: {e.output}")
+        logger.error("Error when running %s: %s", c, e.output)
         output = e.output
     return output
 
 
-def get_zones():
-    global ROOT_ZONES, DNS_SERVER
+def get_zones(root_zones, dns_server):
     zones = []
-    for root_zone in ROOT_ZONES:
-        a = execute_process(f"dig @{DNS_SERVER} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True)
+    for root_zone in root_zones:
+        a = execute_process(f"dig @{dns_server} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True) # pylint: disable=anomalous-backslash-in-string
         x = a.strip().split(b"\n")
         zones.extend([y.decode("utf-8") for y in x])
     return zones
 
 
-def get_a_records(zone):
-    global DNS_SERVER
+def get_a_records(zone, dns_server):
     zone = zone if isinstance(zone, str) else zone.decode('utf-8')
-    a = execute_process(f"dig @{DNS_SERVER} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True)
+    a = execute_process(f"dig @{dns_server} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True) # pylint: disable=anomalous-backslash-in-string
     x = a.strip().split(b"\n")
     return [y.decode("utf-8") for y in x]
 
@@ -153,14 +148,13 @@ def parse_massscan_output(output):
     return ret
 
 
-def start_nmaps(item):
-    global RESULT_DIR, DNS_SERVER, USER_AGENT
+def start_nmaps(item, result_dir, dns_server, user_agent):
     start_time = datetime.now()
     ip = item[0]
     ports = item[1]
     if len(ports) == 0:
-        logger.debug(f"No open ports for {ip}")
-        return
+        logger.debug("No open ports for %s", ip)
+        return ""
     ports = sorted(ports, key=lambda x: x.port)
     portmapping = ""
     uses_tcp = False
@@ -173,7 +167,7 @@ def start_nmaps(item):
             portmapping += "U:"
             uses_udp = True
         else:
-            logger.error(f"Unknown protocol {p.protocol}")
+            logger.error("Unknown protocol %s", p.protocol)
         portmapping += str(p.port)
         portmapping += ","
     portmapping = portmapping.rstrip(",")
@@ -193,9 +187,9 @@ def start_nmaps(item):
             "--osscan-guess",
             "--host-timeout", "10m",
             "-oN", output_file.name,
-            "-oX", f"{RESULT_DIR}/{ip}.xml",
-            "--dns-servers", DNS_SERVER,
-            "--script-args", f"http.useragent=\"{USER_AGENT}\"",
+            "-oX", f"{result_dir}/{ip}.xml",
+            "--dns-servers", dns_server,
+            "--script-args", f"http.useragent=\"{user_agent}\"",
             ip
         ]
         execute_process(nmap_command)
@@ -204,7 +198,7 @@ def start_nmaps(item):
         output = output_file.read()
     process_name = current_process().name
     delta = calculate_timedelta(start_time)
-    logger.debug(f"{process_name} finished ({delta})")
+    logger.debug("%s finished (%s)", process_name, delta)
     return output
 
 
@@ -221,79 +215,78 @@ def main(config_file):
     # 1
     p = Path(config_file)
     if not p.is_file():
-        logger.error(f"{config_file} is no valid file")
+        logger.error("%s is no valid file", config_file)
         return
-    with p.open() as f:
+    with p.open(mode="r", encoding="utf-8") as f:
         try:
             config = json.load(f)
         except json.decoder.JSONDecodeError as e:
-            logger.error(f"Invalid config file: {e}")
+            logger.error("Invalid config file: %s", e)
             return
 
-    global ROOT_ZONES, DNS_SERVER, USER_AGENT, RESULT_DIR
-    ROOT_ZONES = config["root_zones"]
-    BLACKLIST_ZONES = config["blacklisted_zones"]
-    BLACKLIST_IP = config["blacklisted_ips"]
-    BLACKLIST_PORTS = config["blacklisted_ports"]
-    BLACKLIST_RANGES = config["blacklisted_ranges"]
-    DNS_SERVER = config["dns_server"]
-    USER_AGENT = config["user_agent"]
-    POST_SCAN_SCRIPTS = config["post_scan_scripts"]
-    RESULT_DIR = config["result_dir"]
+    root_zones = config["root_zones"]
+    blacklist_zones = config["blacklisted_zones"]
+    blacklist_ip = config["blacklisted_ips"]
+    blacklist_ports = config["blacklisted_ports"]
+    blacklist_ranges = config["blacklisted_ranges"]
+    dns_server = config["dns_server"]
+    user_agent = config["user_agent"]
+    post_scan_scripts = config["post_scan_scripts"]
+    result_dir = config["result_dir"]
     massscan_rate = config["massscan_rate"]
 
     # create results directory
-    if not os.path.exists(RESULT_DIR):
-        os.makedirs(RESULT_DIR)
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
 
     # 2
-    zones = get_zones()
+    zones = get_zones(root_zones, dns_server)
     # also append root zone (also contains A records)
-    zones.extend(ROOT_ZONES)
+    zones.extend(root_zones)
     tmp = len(zones)
-    zones = [z for z in zones if z not in BLACKLIST_ZONES]
-    logger.info(f"Removed {tmp - len(zones)} blacklisted zones")
+    zones = [z for z in zones if z not in blacklist_zones]
+    logger.info("Removed %d blacklisted zones", tmp - len(zones))
     wf("zones.txt", "\n".join(zones))
-    logger.info(f"Got {len(zones)} zones")
+    logger.info("Got %d zones", len(zones))
 
     # 3
     a_records = []
     for zone in zones:
-        a_records.extend(get_a_records(zone))
+        a_records.extend(get_a_records(zone, dns_server))
     # remove duplicates
     a_records = list(set(a_records))
     # only use internal ips
     tmp = len(a_records)
     a_records = [i for i in a_records if i != "" and ip_address(i).is_private]
-    logger.info(f"Removed {tmp - len(a_records)} non private ips")
+    logger.info("Removed %d non private ips", tmp - len(a_records))
     # remove blacklisted IPs
     tmp = len(a_records)
-    a_records = [i for i in a_records if i not in BLACKLIST_IP]
-    logger.info(f"Removed {tmp - len(a_records)} blacklisted ips")
+    a_records = [i for i in a_records if i not in blacklist_ip]
+    logger.info("Removed %d blacklisted ips", tmp - len(a_records))
     # remove blacklisted ranges
     tmp = len(a_records)
-    for x in BLACKLIST_RANGES:
+    for x in blacklist_ranges:
         net = ip_network(x)
         a_records = [i for i in a_records if ip_address(i) not in net]
-    logger.info(f"Removed {tmp - len(a_records)} blacklisted ips from ranges")
+    logger.info("Removed %d blacklisted ips from ranges", tmp - len(a_records))
     wf("a_records.txt", "\n".join(a_records))
-    logger.info(f"Got {len(a_records)} A records")
+    logger.info("Got %d A records", len(a_records))
 
     # 4
     # https://github.com/nmap/nmap/blob/master/nmap-services
     ports = parse_nmap_services("nmap_services")
     # Blacklisted Ports
-    ports = [x for x in ports if x not in BLACKLIST_PORTS]
-    logger.info(f"Removed {len(BLACKLIST_PORTS)} blacklisted ports")
+    ports = [x for x in ports if x not in blacklist_ports]
+    logger.info("Removed %d blacklisted ports", len(blacklist_ports))
 
     # 5
     start_time = datetime.now()
-    logger.info(f"Starting masscan with rate {massscan_rate}")
+    logger.info("Starting masscan with rate %s", massscan_rate)
     massscan_output = start_massscan(a_records, ports, massscan_rate)
 
     # 6
     ports = parse_massscan_output(massscan_output)
-    logger.info(f"Massscan finished in {calculate_timedelta(start_time)}")
+    logger.info("Massscan finished in %s", calculate_timedelta(start_time))
 
     # 7
     start_time = datetime.now()
@@ -301,9 +294,10 @@ def main(config_file):
     nmap_outputs = []
     with Pool(NUM_WORKERS) as pool:
         ips_to_scan = len(ports)
-        for counter, output in enumerate(pool.imap_unordered(start_nmaps, ports.items()), 1):
+        for counter, output in enumerate(pool.imap_unordered(start_nmaps, ports.items(), result_dir, dns_server, user_agent), 1):
             nmap_outputs.append(output)
-            text = "Nmap progress: {0:.2%} ({1}/{2})".format(counter/ips_to_scan, counter, ips_to_scan)
+            done_percent = counter/ips_to_scan
+            text = f"Nmap progress: {done_percent:.2%} ({counter}/{ips_to_scan})"
             if sys.stderr.isatty():
                 # progressbar style when there is a tty attached
                 text = f"\r{text}"
@@ -311,15 +305,15 @@ def main(config_file):
                 text = f"{text}\n"
             sys.stderr.write(text)
         sys.stderr.write("\n")
-    logger.info(f"NMAP scan finished in {calculate_timedelta(start_time)}")
+    logger.info("NMAP scan finished in %s", calculate_timedelta(start_time))
 
-    with open("output.txt", "wb") as f:
+    with open("output.txt", "wb", encoding="utf-8") as f:
         for x in nmap_outputs:
             f.write(x)
 
     # 8
     # order should be preserved on parsing according to JSON docs
-    for x in POST_SCAN_SCRIPTS:
+    for x in post_scan_scripts:
         logger.info(execute_process(x).decode('utf-8'))
 
 
@@ -327,7 +321,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="scan")
     parser.add_argument("-c", "--config", required=True, help="config file to use")
     parser.add_argument("-d", "--debug", action="store_true", help="set loglevel to DEBUG")
-    parser.add_argument("--version", action="version", version="%(prog)s {}".format(VERSION))
+    parser.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     args = parser.parse_args()
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -335,4 +329,4 @@ if __name__ == "__main__":
     try:
         main(args.config)
     finally:
-        logger.info(f"script finished in {calculate_timedelta(overall_start_time)}")
+        logger.info("script finished in %s", calculate_timedelta(overall_start_time))

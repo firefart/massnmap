@@ -1,0 +1,9 @@
+[MESSAGES CONTROL]
+disable=
+    line-too-long,
+    invalid-name,
+    missing-function-docstring,
+    missing-module-docstring,
+    too-many-statements,
+    too-many-locals,
+    too-many-function-args
