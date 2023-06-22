@@ -314,7 +314,10 @@ def main(config_file):
     # 8
     # order should be preserved on parsing according to JSON docs
     for x in post_scan_scripts:
+        logger.info("starting post scan script %s", x)
+        script_start_time = datetime.now()
         logger.info(execute_process(x).decode('utf-8'))
+        logger.info("%s finished in %s", x, calculate_timedelta(script_start_time))
 
 
 if __name__ == "__main__":
