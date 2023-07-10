@@ -136,7 +136,7 @@ class Scan:
                 input_file.write(line)
             input_file.flush()
 
-            config = self.__generate_massscan_config(ports, self.massscan_rate, input_file.name, output_file.name)
+            config = self.__generate_massscan_config(ports, input_file.name, output_file.name)
             config_file.write(config.encode("utf-8"))
             config_file.flush()
 
@@ -209,7 +209,7 @@ class Scan:
         # 7) run post scan scripts\
 
         # 1
-        zones = self.__get_zones(self.root_zones)
+        zones = self.__get_zones()
         # also append root zone (also contains A records)
         zones.extend(self.root_zones)
         tmp = len(zones)
