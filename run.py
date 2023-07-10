@@ -206,7 +206,7 @@ class Scan:
         # 4) massscan of a records
         # 5) parse massscan output
         # 6) run single nmap scans with discovered ports
-        # 7) run post scan scripts\
+        # 7) run post scan scripts
 
         # 1
         zones = self.__get_zones()
