@@ -4,6 +4,9 @@ disable=
     invalid-name,
     missing-function-docstring,
     missing-module-docstring,
+    missing-class-docstring,
     too-many-statements,
     too-many-locals,
-    too-many-function-args
+    too-many-function-args,
+    too-many-instance-attributes,
+    too-few-public-methods
