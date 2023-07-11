@@ -146,7 +146,7 @@ class Scan:
             output = output_file.read()
         return output
 
-    def __start_nmaps(self, item):
+    def _start_nmaps(self, item):
         start_time = datetime.now()
         ip = item[0]
         ports = item[1]
@@ -263,7 +263,7 @@ class Scan:
         nmap_outputs = []
         with Pool(NUM_WORKERS) as pool:
             ips_to_scan = len(ports)
-            for counter, output in enumerate(pool.imap_unordered(self.__start_nmaps, ports.items()), 1):
+            for counter, output in enumerate(pool.imap_unordered(self._start_nmaps, ports.items()), 1):
                 nmap_outputs.append(output)
                 done_percent = counter/ips_to_scan
                 text = f"Nmap progress: {done_percent:.2%} ({counter}/{ips_to_scan})"
