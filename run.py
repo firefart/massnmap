@@ -146,6 +146,7 @@ class Scan:
             output = output_file.read()
         return output
 
+    # no __ here or imap_unordered can not call this method
     def _start_nmaps(self, item):
         start_time = datetime.now()
         ip = item[0]
