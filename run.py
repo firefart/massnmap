@@ -271,9 +271,11 @@ class Scan:
                 if sys.stderr.isatty():
                     # progressbar style when there is a tty attached
                     text = f"\r{text}"
-                else:
+                    sys.stderr.write(text)
+                elif (counter % 100 == 0) or (counter == ips_to_scan):
+                    # when writing to the logs only report every 100 scans or on the last item
                     text = f"{text}\n"
-                sys.stderr.write(text)
+                    sys.stderr.write(text)
             sys.stderr.write("\n")
         logger.info("NMAP scan finished in %s", calculate_timedelta(start_time))
 
