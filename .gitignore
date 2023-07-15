@@ -4,3 +4,4 @@ output.txt
 results/*.xml
 *.conf
 *.cfg
+.idea

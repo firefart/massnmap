@@ -14,7 +14,8 @@ import json
 from pathlib import Path
 import os
 from ipaddress import ip_network, ip_address
-import smtplib, ssl
+import smtplib
+import ssl
 import socket
 from email.message import EmailMessage
 
@@ -152,7 +153,7 @@ class Scan:
     def __execute_process(self, c, shell=False):
         logger.debug("Executing %s", c)
         # Needed when shell = False
-        if (not shell and isinstance(c, str)):
+        if not shell and isinstance(c, str):
             c = c.split()
         try:
             output = subprocess.check_output(c, stderr=subprocess.STDOUT, shell=shell)
@@ -337,7 +338,7 @@ class Scan:
             script_start_time = datetime.now()
             logger.info(self.__execute_process(x).decode('utf-8'))
             logger.info("%s finished in %s", x, calculate_timedelta(script_start_time))
-        
+
         # 8
         self.send_email()
 
