@@ -14,6 +14,9 @@ import json
 from pathlib import Path
 import os
 from ipaddress import ip_network, ip_address
+import smtplib, ssl
+import socket
+from email.message import EmailMessage
 
 VERSION = "1.1"
 LOG_FORMAT = "%(asctime)-15s - %(levelname)-8s - %(processName)-11s - %(message)s"
@@ -54,9 +57,52 @@ class Scan:
         self.post_scan_scripts = config["post_scan_scripts"]
         self.result_dir = config["result_dir"]
         self.massscan_rate = config["massscan_rate"]
+        # Mail config
+        self.mail_from = config["mail"]["from"]
+        self.mail_to = config["mail"]["to"]
+        self.mail_server = config["mail"]["server"]
+        self.mail_port = config["mail"]["port"]
+        self.mail_username = config["mail"]["username"]
+        self.mail_password = config["mail"]["password"]
+        self.mail_tlsmode = config["mail"]["tlsmode"]
         # create results directory
         if not os.path.exists(self.result_dir):
             os.makedirs(self.result_dir)
+
+    def send_email(self):
+        if self.mail_server == "":
+            return
+
+        hostname = socket.gethostname()
+        message = f"massnmap scan finished on {hostname}"
+        msg = EmailMessage()
+        msg['Subject'] = message
+        msg['From'] = self.mail_from
+        msg['To'] = self.mail_to
+        msg.set_content(message)
+
+        if self.mail_tlsmode == "off":
+            with smtplib.SMTP(self.mail_server, self.mail_port) as server:
+                if self.mail_username != "" and self.mail_password != "":
+                    server.login(self.mail_username, self.mail_password)
+                server.send_message(msg)
+        elif self.mail_tlsmode == "on":
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(self.mail_server, self.mail_port, context=context) as server:
+                if self.mail_username != "" and self.mail_password != "":
+                    server.login(self.mail_username, self.mail_password)
+                server.send_message(msg)
+        elif self.mail_tlsmode == "startssl":
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(self.mail_server, self.mail_port, context=context) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                if self.mail_username != "" and self.mail_password != "":
+                    server.login(self.mail_username, self.mail_password)
+                server.send_message(msg)
+        else:
+            raise ValueError(f"invalid tls mode {self.mail_tlsmode}")
 
     def __parse_massscan_output(self, output):
         ret = {}
@@ -208,6 +254,7 @@ class Scan:
         # 5) parse massscan output
         # 6) run single nmap scans with discovered ports
         # 7) run post scan scripts
+        # 8) send email
 
         # 1
         zones = self.__get_zones()
@@ -290,6 +337,9 @@ class Scan:
             script_start_time = datetime.now()
             logger.info(self.__execute_process(x).decode('utf-8'))
             logger.info("%s finished in %s", x, calculate_timedelta(script_start_time))
+        
+        # 8
+        self.send_email()
 
 
 def wf(fname, content):
