@@ -70,12 +70,12 @@ class Scan:
         if not os.path.exists(self.result_dir):
             os.makedirs(self.result_dir)
 
-    def send_email(self, overall_time):
+    def send_email(self, time_taken):
         if self.mail_server == "":
             return
 
         hostname = socket.gethostname()
-        message = f"massnmap finished on {hostname} in {overall_time}"
+        message = f"massnmap finished on {hostname} in {time_taken}"
         msg = EmailMessage()
         msg['Subject'] = message
         msg['From'] = self.mail_from
