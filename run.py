@@ -93,7 +93,7 @@ class Scan:
                 if self.mail_username != "" and self.mail_password != "":
                     server.login(self.mail_username, self.mail_password)
                 server.send_message(msg)
-        elif self.mail_tlsmode == "startssl":
+        elif self.mail_tlsmode == "starttls":
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(self.mail_server, self.mail_port, context=context) as server:
                 server.ehlo()
