@@ -70,12 +70,12 @@ class Scan:
         if not os.path.exists(self.result_dir):
             os.makedirs(self.result_dir)
 
-    def send_email(self):
+    def send_email(self, overall_time):
         if self.mail_server == "":
             return
 
         hostname = socket.gethostname()
-        message = f"massnmap scan finished on {hostname}"
+        message = f"massnmap finished on {hostname} in {overall_time}"
         msg = EmailMessage()
         msg['Subject'] = message
         msg['From'] = self.mail_from
@@ -255,7 +255,6 @@ class Scan:
         # 5) parse massscan output
         # 6) run single nmap scans with discovered ports
         # 7) run post scan scripts
-        # 8) send email
 
         # 1
         zones = self.__get_zones()
@@ -339,9 +338,6 @@ class Scan:
             logger.info(self.__execute_process(x).decode('utf-8'))
             logger.info("%s finished in %s", x, calculate_timedelta(script_start_time))
 
-        # 8
-        self.send_email()
-
 
 def wf(fname, content):
     with open(fname, "wt", encoding="utf-8") as f:
@@ -374,8 +370,10 @@ if __name__ == "__main__":
     if args.debug:
         logger.setLevel(logging.DEBUG)
     overall_start_time = datetime.now()
+    s = Scan(config_file=args.config)
     try:
-        s = Scan(config_file=args.config)
         s.scan()
     finally:
-        logger.info("script finished in %s", calculate_timedelta(overall_start_time))
+        overall_time = calculate_timedelta(overall_start_time)
+        logger.info("script finished in %s", overall_time)
+        s.send_email(overall_time)
