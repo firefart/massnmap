@@ -323,6 +323,7 @@ class Scan:
                     # when writing to the logs only report every 100 scans or on the last item
                     text = f"{text}\n"
                     sys.stderr.write(text)
+                    sys.stderr.flush()
             sys.stderr.write("\n")
         logger.info("NMAP scan finished in %s", calculate_timedelta(start_time))
 
