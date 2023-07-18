@@ -95,7 +95,7 @@ class Scan:
                 server.send_message(msg)
         elif self.mail_tlsmode == "starttls":
             context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(self.mail_server, self.mail_port, context=context) as server:
+            with smtplib.SMTP(self.mail_server, self.mail_port) as server:
                 server.ehlo()
                 server.starttls(context=context)
                 server.ehlo()
@@ -327,7 +327,7 @@ class Scan:
             sys.stderr.write("\n")
         logger.info("NMAP scan finished in %s", calculate_timedelta(start_time))
 
-        with open("output.txt", "wb", encoding="utf-8") as f:
+        with open("output.txt", "wb") as f:
             for x in nmap_outputs:
                 f.write(x)
 
