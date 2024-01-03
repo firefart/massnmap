@@ -242,7 +242,7 @@ class Scan:
                 "-oX", f"{self.result_dir}/{ip}.xml",
                 "--script-args", f"http.useragent=\"{self.user_agent}\""
             ]
-            
+
             if self.dns_server and self.dns_server != "":
                 nmap_command.extend(["--dns-servers", self.dns_server])
 
