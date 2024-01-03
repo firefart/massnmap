@@ -165,14 +165,20 @@ class Scan:
     def __get_zones(self):
         zones = []
         for root_zone in self.root_zones:
-            a = self.__execute_process(f"dig @{self.dns_server} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True) # pylint: disable=anomalous-backslash-in-string
+            if self.dns_server and self.dns_server != "":
+                a = self.__execute_process(f"dig @{self.dns_server} -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True) # pylint: disable=anomalous-backslash-in-string
+            else:
+                a = self.__execute_process(f"dig -t axfr {root_zone} | grep -E \"\s+NS\s+\" | awk '{{print $1}}' | sort -u | sed -r \"s/\.$//\"", True) # pylint: disable=anomalous-backslash-in-string
             x = a.strip().split(b"\n")
             zones.extend([y.decode("utf-8") for y in x])
         return zones
 
     def __get_a_records(self, zone):
         zone = zone if isinstance(zone, str) else zone.decode('utf-8')
-        a = self.__execute_process(f"dig @{self.dns_server} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True) # pylint: disable=anomalous-backslash-in-string
+        if self.dns_server and self.dns_server != "":
+            a = self.__execute_process(f"dig @{self.dns_server} -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True) # pylint: disable=anomalous-backslash-in-string
+        else:
+            a = self.__execute_process(f"dig -t axfr {zone} | grep -E \"\s+A\s+\" | awk '{{print $5}}' | sort -V", True) # pylint: disable=anomalous-backslash-in-string
         x = a.strip().split(b"\n")
         return [y.decode("utf-8") for y in x]
 
@@ -234,10 +240,15 @@ class Scan:
                 "--host-timeout", "10m",
                 "-oN", output_file.name,
                 "-oX", f"{self.result_dir}/{ip}.xml",
-                "--dns-servers", self.dns_server,
-                "--script-args", f"http.useragent=\"{self.user_agent}\"",
-                ip
+                "--script-args", f"http.useragent=\"{self.user_agent}\""
             ]
+            
+            if self.dns_server and self.dns_server != "":
+                nmap_command.extend(["--dns-servers", self.dns_server])
+
+            # last parameter is the ip
+            nmap_command.append(ip)
+
             self.__execute_process(nmap_command)
             output_file.flush()
             output_file.seek(0)
